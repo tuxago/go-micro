@@ -26,7 +26,8 @@ type MockClient struct {
 	Opts   client.Options
 
 	sync.Mutex
-	Response map[string][]MockResponse
+	Response   map[string][]MockResponse
+	callNumber int
 }
 
 func (m *MockClient) Init(opts ...client.Option) error {
@@ -75,27 +76,29 @@ func (m *MockClient) Call(ctx context.Context, req client.Request, rsp interface
 		return errors.NotFound("go.micro.client.mock", "service not found")
 	}
 
-	for _, r := range response {
-		if r.Method != req.Method() {
-			continue
-		}
-
-		if r.Error != nil {
-			return r.Error
-		}
-
-		v := reflect.ValueOf(rsp)
-
-		if t := reflect.TypeOf(rsp); t.Kind() == reflect.Ptr {
-			v = reflect.Indirect(v)
-		}
-
-		v.Set(reflect.ValueOf(r.Response))
-
+	if m.callNumber > len(response) {
 		return nil
 	}
 
-	return fmt.Errorf("rpc: can't find service %s", req.Method())
+	r := response[m.callNumber]
+	m.callNumber++
+
+	if r.Method != req.Method() {
+		return fmt.Errorf("rpc: can't find service %s", req.Method())
+	}
+
+	if r.Error != nil {
+		return r.Error
+	}
+
+	v := reflect.ValueOf(rsp)
+
+	if t := reflect.TypeOf(rsp); t.Kind() == reflect.Ptr {
+		v = reflect.Indirect(v)
+	}
+
+	v.Set(reflect.ValueOf(r.Response))
+	return nil
 }
 
 func (m *MockClient) CallRemote(ctx context.Context, addr string, req client.Request, rsp interface{}, opts ...client.CallOption) error {

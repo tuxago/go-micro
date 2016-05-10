@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/micro/go-micro/errors"
@@ -14,8 +15,11 @@ func TestClient(t *testing.T) {
 	}
 
 	response := []MockResponse{
+		{Method: "Foo.Bar", Response: map[string]interface{}{"foo": "baz"}},
 		{Method: "Foo.Bar", Response: map[string]interface{}{"foo": "bar"}},
 		{Method: "Foo.Struct", Response: &TestResponse{Param: "aparam"}},
+		{Method: "Foo.Struct", Response: &TestResponse{Param: "bparam"}},
+		{Method: "Foo.Fail", Error: errors.InternalServerError("go.mock", "very failed")},
 		{Method: "Foo.Fail", Error: errors.InternalServerError("go.mock", "failed")},
 	}
 
@@ -31,7 +35,10 @@ func TestClient(t *testing.T) {
 			t.Fatalf("Expecter error %v got %v", r.Error, err)
 		}
 
+		if !reflect.DeepEqual(rsp, r.Response) {
+			t.Fatalf("Expected response %v got %v", r.Response, rsp)
+		}
+
 		t.Log(rsp)
 	}
-
 }
